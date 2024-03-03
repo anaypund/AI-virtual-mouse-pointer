@@ -7,6 +7,7 @@ from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 import math
+import screen_brightness_control as sbcontrol
 
 
 
@@ -20,7 +21,7 @@ pTime = 0
 plocX, plocY = 0, 0
 clocX, clocY = 0, 0
 
-cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 cap.set(3, wCam)
 cap.set(4, hCam)
 detector = htm.handDetector(maxHands=1)
@@ -39,6 +40,9 @@ volBar = 400
 volPer = 0
 area = 0
 colorVol = (255, 0, 0)
+flag = False
+level = 0
+
 
 wScr, hScr = autopy.screen.size()
 
@@ -58,45 +62,21 @@ while True:
     
     # 3. Check which fingers are up
     fingers = detector.fingersUp()
-    print(fingers)
-
-    if 250 < area < 1000 and fingers == [1, 1, 1, 1, 1]:
-
-            # Find Distance between index and Thumb
-            length, img, lineInfo = detector.findDistance(4, 8, img)
-            # Find Distance between pinky and ring
-            length2, img, lineInfo2 = detector.findDistance(14, 19, img)
-            # print(length)
-            fingers = detector.fingersUp()
-            # Convert Volume
-            volBar = np.interp(length, [50, 200], [400, 150])
-            volPer = np.interp(length, [50, 200], [0, 100])
-
-            # Reduce Resolution to make it smoother
-            smoothness = 10
-            volPer = smoothness * round(volPer / smoothness)
+    # print(fingers)
 
 
-            # If pinky is down set volume
-            if length2 < 30:
-                volume.SetMasterVolumeLevelScalar(volPer / 100, None)
-                cv2.circle(img, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
-                colorVol = (0, 255, 0)
-            else:
-                colorVol = (255, 0, 0)
-            cv2.rectangle(img, (50, int(volBar)), (85, 400), (255, 0, 0), cv2.FILLED)
-            cv2.putText(img, f'{int(volPer)} %', (40, 450), cv2.FONT_HERSHEY_COMPLEX,
-                        1, (255, 0, 0), 3)
-            cVol = int(volume.GetMasterVolumeLevelScalar() * 100)
-            cv2.putText(img, f'Vol Set: {int(cVol)}', (400, 50), cv2.FONT_HERSHEY_COMPLEX,
-                1, colorVol, 3)
+    #Play / Pause Media:
+    # if 250 < area < 1000 and fingers == [0, 1, 1, 1, 1]:
+    #     length, img, lineInfo = detector.findDistance(8, 12, img)
+    #     if length < 25:
+    #         pyautogui.press("playpause")
 
     # print(fingers)
     cv2.rectangle(img, (frameR, frameR -50), (wCam - frameR, hCam - frameR - 70),
     (255, 0, 255), 2)
     try:
-        # 4. Only Index Finger : Moving Mode
-        if fingers[1] == 1 :
+        # Only Index Finger : Moving Mode
+        if fingers == [0, 1, 0, 0, 0] or fingers == [0, 1, 1, 0, 0]:
             # 5. Convert Coordinates
             x3 = np.interp(x1, (frameR, wCam - frameR), (0, wScr))
             y3 = np.interp(y1, (frameR - 50, hCam - frameR - 70), (0, hScr))
@@ -118,23 +98,116 @@ while True:
             if length < 30:
                 cv2.circle(img, (lineInfo[4], lineInfo[5]),
                 15, (0, 255, 0), cv2.FILLED)
-                autopy.mouse.click()
+                # autopy.mouse.click()
+                pyautogui.click()
+                
+
+        #Index and middle finger partially closed : Dragging mode
+        if fingers[1] == 1 and fingers[2] == 1:
+            lengthDrag, img, lineInfo = detector.findDistance(8, 6, img)
+            lengthDrag2, img, lineInfo = detector.findDistance(10, 12, img)
+            if lengthDrag < 25 and lengthDrag2 < 25 and flag == False:
+                flag = True
+                cv2.circle(img, (lineInfo[4], lineInfo[5]),
+                15, (0, 255, 0), cv2.FILLED)
+                pyautogui.mouseDown(button = "left")
+            elif flag == True and not (lengthDrag < 25 and lengthDrag2 < 25):
+                pyautogui.mouseUp(button = "left")
+                flag = False
 
         # All are up : Right click
         if fingers[0] == 0 and fingers[1] == 1 and fingers[2] == 1 and fingers[3] == 1 and fingers[4] == 0:
             autopy.mouse.click(autopy.mouse.Button.RIGHT)
 
         #Thumb is up : scroll up
-        if fingers == [1, 0, 0, 0, 0]:
+        if fingers == [1, 0, 0, 0, 0] and level == 0:
             pyautogui.scroll(-300)
 
         #Thumb and index is up : scroll down
-        if fingers == [1, 1, 0, 0, 0]:
+        if fingers == [1, 1, 0, 0, 0] and level == 0:
             pyautogui.scroll(300)
 
-        # Pinky is up : Close the program
-        if fingers[0] == 0 and fingers[1] == 0 and fingers[2] == 0 and fingers[3] == 0 and fingers[4] == 1:
+        # Level switch : 1
+        if 250 < area < 1000 and fingers == [0, 1, 0, 0, 1] and level == 0:
+            level = 1
+            time.sleep(1)
+        # Level switch : 0
+        if 250 < area < 1000 and fingers == [1, 1, 0, 0, 1] and level == 1:
+            level = 0
+
+        ######################################################## LEVEL 0 ##################################################################
+        
+        # Volume Control
+        if 250 < area < 1000 and fingers == [1, 1, 1, 1, 1] and level == 0:
+
+            # Find Distance between index and Thumb
+            length, img, lineInfo = detector.findDistance(4, 8, img)
+            # Find Distance between pinky and ring
+            length2, img, lineInfo2 = detector.findDistance(14, 19, img)
+            # print(length)
+            fingers = detector.fingersUp()
+            # Convert Volume
+            volBar = np.interp(length, [50, 200], [400, 150])
+            volPer = np.interp(length, [50, 200], [0, 100])
+
+            # Reduce Resolution to make it smoother
+            smoothness = 10
+            volPer = smoothness * round(volPer / smoothness)
+
+
+            # If pinky is touching ring set volume
+            if length2 < 30:
+                volume.SetMasterVolumeLevelScalar(volPer / 100, None)
+                cv2.circle(img, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                colorVol = (0, 255, 0)
+            else:
+                colorVol = (255, 0, 0)
+            cv2.rectangle(img, (50, int(volBar)), (85, 400), (255, 0, 0), cv2.FILLED)
+            cv2.putText(img, f'{int(volPer)} %', (40, 450), cv2.FONT_HERSHEY_COMPLEX,
+                        1, (255, 0, 0), 3)
+            cVol = int(volume.GetMasterVolumeLevelScalar() * 100)
+            cv2.putText(img, f'Vol Set: {int(cVol)}', (400, 50), cv2.FONT_HERSHEY_COMPLEX,
+                1, colorVol, 3)
+
+        # Brightness Control
+        if 250 < area < 1000 and fingers == [1, 1, 1, 1, 0] and level == 0:
+            lengthBright, img, lineInfo = detector.findDistance(4, 8, img)
+
+            brightBar = np.interp(lengthBright, [50, 200], [400, 150])
+            brightPer = np.interp(lengthBright, [50, 200], [0, 100])
+            # Reduce Resolution to make it smoother
+            smoothness = 10
+            brightPer = smoothness * round(brightPer / smoothness)
+            cv2.rectangle(img, (50, int(brightBar)), (85, 400), (255, 0, 0), cv2.FILLED)
+            cv2.putText(img, f'{int(brightPer)} %', (40, 450), cv2.FONT_HERSHEY_COMPLEX,
+                        1, (255, 0, 0), 3)
+
+            if lengthBright < 20:
+                lengthBright = 0
+            elif lengthBright > 170:
+                lengthBright = 200  
+            # print(lengthBright)
+            sbcontrol.set_brightness(lengthBright/2, display = 0)
+
+        ######################################################## LEVEL 1 ##################################################################
+            
+        print(level)
+        # Thumb, Index and Middle Up : Zoom In
+        if 250 < area < 1000 and fingers == [1, 1, 1, 0, 0] and level == 1:
+            print("Entered Zoom in")
+            pyautogui.hotkey('ctrl', 'add')
+            time.sleep(1)
+
+        # Thumb, Index, Middle and ring Up : Zoom Out
+        if 250 < area < 1000 and fingers == [1, 1, 1, 1, 0] and level == 1:
+            print("Entered Zoom out")
+            pyautogui.hotkey('ctrl', 'subtract')
+            time.sleep(1)
+
+        # Pinky up : Exit
+        if 250 < area < 1000 and fingers == [0, 0, 0, 0, 1] and level == 1:
             break
+
     except Exception as e:
         print("Failed to recognise hand")
         
@@ -143,6 +216,8 @@ while True:
     fps = 1 / (cTime - pTime)
     pTime = cTime
     cv2.putText(img, str(int(fps)), (20, 50), cv2.FONT_HERSHEY_PLAIN, 3,
+    (255, 0, 0), 3)
+    cv2.putText(img, f'Level : {str(int(level)+1)}', (490, 450), cv2.FONT_HERSHEY_PLAIN, 2,
     (255, 0, 0), 3)
     # 12. Display
     cv2.imshow("Image", img)

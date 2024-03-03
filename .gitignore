@@ -1,0 +1,6 @@
+./Scripts
+./Lib
+./share
+./pyvenv.cfg
+./readme.rst
+./__pycache__
