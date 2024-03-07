@@ -2,11 +2,14 @@ import cv2
 import numpy as np
 import HandTrackingModule as htm
 import time
+from time import sleep
 import autopy, pyautogui
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 import math
+from playsound import playsound
+import keyboard
 import screen_brightness_control as sbcontrol
 
 
@@ -42,6 +45,7 @@ area = 0
 colorVol = (255, 0, 0)
 flag = False
 level = 0
+condition_met = False
 
 
 wScr, hScr = autopy.screen.size()
@@ -76,7 +80,7 @@ while True:
     (255, 0, 255), 2)
     try:
         # Only Index Finger : Moving Mode
-        if fingers == [0, 1, 0, 0, 0] or fingers == [0, 1, 1, 0, 0]:
+        if fingers == [0, 1, 0, 0, 0] or fingers == [0, 1, 1, 0, 0] and (level == 0 or level == 1):
             # 5. Convert Coordinates
             x3 = np.interp(x1, (frameR, wCam - frameR), (0, wScr))
             y3 = np.interp(y1, (frameR - 50, hCam - frameR - 70), (0, hScr))
@@ -90,7 +94,7 @@ while True:
             plocX, plocY = clocX, clocY
             
         # 8. Both Index and middle fingers are up : Clicking Mode
-        if fingers[1] == 1 and fingers[2] == 1:
+        if fingers[1] == 1 and fingers[2] == 1 and (level == 0 or level == 1):
             # 9. Find distance between fingers
             length, img, lineInfo = detector.findDistance(8, 12, img)
             # print(length)
@@ -103,7 +107,7 @@ while True:
                 
 
         #Index and middle finger partially closed : Dragging mode
-        if fingers[1] == 1 and fingers[2] == 1:
+        if fingers[1] == 1 and fingers[2] == 1 and (level == 0 or level == 1):
             lengthDrag, img, lineInfo = detector.findDistance(8, 6, img)
             lengthDrag2, img, lineInfo = detector.findDistance(10, 12, img)
             if lengthDrag < 25 and lengthDrag2 < 25 and flag == False:
@@ -116,7 +120,7 @@ while True:
                 flag = False
 
         # All are up : Right click
-        if fingers[0] == 0 and fingers[1] == 1 and fingers[2] == 1 and fingers[3] == 1 and fingers[4] == 0:
+        if fingers[0] == 0 and fingers[1] == 1 and fingers[2] == 1 and fingers[3] == 1 and fingers[4] == 0 and (level == 0 or level == 1):
             autopy.mouse.click(autopy.mouse.Button.RIGHT)
 
         #Thumb is up : scroll up
@@ -127,14 +131,20 @@ while True:
         if fingers == [1, 1, 0, 0, 0] and level == 0:
             pyautogui.scroll(300)
 
-        # Level switch : 1
-        if 250 < area < 1000 and fingers == [0, 1, 0, 0, 1] and level == 0:
-            level = 1
-            time.sleep(1)
         # Level switch : 0
-        if 250 < area < 1000 and fingers == [1, 1, 0, 0, 1] and level == 1:
+        if 250 < area < 1000 and fingers == [1, 1, 0, 0, 1] and (level == 1 or level == 2):
             level = 0
+            playsound('./sounds/level 1.mp3')
 
+        # Level switch : 1
+        if 250 < area < 1000 and fingers == [0, 1, 0, 0, 1] and (level == 0 or level == 2):
+            level = 1
+            playsound('./sounds/level 2.mp3')
+
+        # Level switch : 2
+        if 250 < area < 1000 and fingers == [1, 0, 0, 0, 1] and (level == 1 or level == 0):
+            level = 2
+            playsound('./sounds/level 3.mp3')
         ######################################################## LEVEL 0 ##################################################################
         
         # Volume Control
@@ -191,7 +201,7 @@ while True:
 
         ######################################################## LEVEL 1 ##################################################################
             
-        print(level)
+        # print(level)
         # Thumb, Index and Middle Up : Zoom In
         if 250 < area < 1000 and fingers == [1, 1, 1, 0, 0] and level == 1:
             print("Entered Zoom in")
@@ -206,7 +216,49 @@ while True:
 
         # Pinky up : Exit
         if 250 < area < 1000 and fingers == [0, 0, 0, 0, 1] and level == 1:
+            playsound('./sounds/Thank you.mp3')
             break
+            time.sleep(0.1)
+            playsound('./sounds/goodbye.mp3')
+
+        ######################################################## LEVEL 2 ##################################################################
+
+        # Index : Up arrow key
+        if fingers == [0, 1, 0, 0, 0] and level == 2:
+            print(fingers)
+            if not condition_met:  # Check if the condition has not been met previously
+                condition_met = True
+                keyboard.press_and_release("up")
+                
+
+        # Thumb : Left key
+        if fingers == [1, 0, 0, 0, 0] and level == 2:
+            print(fingers)
+            if not condition_met:  # Check if the condition has not been met previously
+                condition_met = True
+                keyboard.press_and_release("left")
+                
+
+        # Pinky : Right key
+        if fingers == [0, 0, 0, 0, 1] and level == 2:
+            print(fingers)
+            if not condition_met:  # Check if the condition has not been met previously
+                condition_met = True
+                keyboard.press_and_release("right")
+                
+
+        # Palm : Down arrow key
+        if fingers == [1, 1, 1, 1, 1] and level == 2:
+            print(fingers)
+            if not condition_met:  # Check if the condition has not been met previously
+                condition_met = True
+                keyboard.press_and_release("down")
+                
+
+        # Reset the condition flag if fingers change from [1, 1, 1, 1, 1]
+        if fingers == [0, 0, 0, 0, 0]:
+            condition_met = False
+
 
     except Exception as e:
         print("Failed to recognise hand")
