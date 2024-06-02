@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+
 import HandTrackingModule as htm
 import time
 from time import sleep
@@ -24,7 +25,7 @@ pTime = 0
 plocX, plocY = 0, 0
 clocX, clocY = 0, 0
 
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 cap.set(3, wCam)
 cap.set(4, hCam)
 detector = htm.handDetector(maxHands=1)
@@ -46,6 +47,7 @@ colorVol = (255, 0, 0)
 flag = False
 level = 0
 condition_met = False
+condition_met_tabs = False
 
 
 wScr, hScr = autopy.screen.size()
@@ -99,11 +101,12 @@ while True:
             length, img, lineInfo = detector.findDistance(8, 12, img)
             # print(length)
             # 10. Click mouse if distance short
-            if length < 30:
+            if length < 25:
                 cv2.circle(img, (lineInfo[4], lineInfo[5]),
                 15, (0, 255, 0), cv2.FILLED)
                 # autopy.mouse.click()
                 pyautogui.click()
+                time.sleep(0.1)
                 
 
         #Index and middle finger partially closed : Dragging mode
@@ -133,18 +136,18 @@ while True:
 
         # Level switch : 0
         if 250 < area < 1000 and fingers == [1, 1, 0, 0, 1] and (level == 1 or level == 2):
-            level = 0
             playsound('./sounds/level 1.mp3')
+            level = 0
 
         # Level switch : 1
         if 250 < area < 1000 and fingers == [0, 1, 0, 0, 1] and (level == 0 or level == 2):
-            level = 1
             playsound('./sounds/level 2.mp3')
+            level = 1
 
         # Level switch : 2
         if 250 < area < 1000 and fingers == [1, 0, 0, 0, 1] and (level == 1 or level == 0):
-            level = 2
             playsound('./sounds/level 3.mp3')
+            level = 2
         ######################################################## LEVEL 0 ##################################################################
         
         # Volume Control
@@ -199,6 +202,14 @@ while True:
             # print(lengthBright)
             sbcontrol.set_brightness(lengthBright/2, display = 0)
 
+        if fingers == [0, 0, 0, 0, 1] and level == 0:
+            if not condition_met_tabs:  # Check if the condition has not been met previously
+                condition_met_tabs = True
+                pyautogui.hotkey('win', 'tab')
+           
+        if fingers == [0, 0, 0, 0, 0] and level == 0:
+            condition_met_tabs = False
+
         ######################################################## LEVEL 1 ##################################################################
             
         # print(level)
@@ -215,7 +226,7 @@ while True:
             time.sleep(1)
 
         # Pinky up : Exit
-        if 250 < area < 1000 and fingers == [0, 0, 0, 0, 1] and level == 1:
+        if fingers == [0, 0, 0, 0, 1] and level == 1:
             playsound('./sounds/Thank you.mp3')
             break
             time.sleep(0.1)
@@ -224,7 +235,7 @@ while True:
         ######################################################## LEVEL 2 ##################################################################
 
         # Index : Up arrow key
-        if fingers == [0, 1, 0, 0, 0] and level == 2:
+        if fingers == [1, 0, 1, 1, 1] and level == 2:
             print(fingers)
             if not condition_met:  # Check if the condition has not been met previously
                 condition_met = True
@@ -232,7 +243,7 @@ while True:
                 
 
         # Thumb : Left key
-        if fingers == [1, 0, 0, 0, 0] and level == 2:
+        if fingers == [0, 1, 1, 1, 1] and level == 2:
             print(fingers)
             if not condition_met:  # Check if the condition has not been met previously
                 condition_met = True
@@ -240,7 +251,7 @@ while True:
                 
 
         # Pinky : Right key
-        if fingers == [0, 0, 0, 0, 1] and level == 2:
+        if fingers == [1, 1, 0, 1, 1] and level == 2:
             print(fingers)
             if not condition_met:  # Check if the condition has not been met previously
                 condition_met = True
@@ -248,7 +259,7 @@ while True:
                 
 
         # Palm : Down arrow key
-        if fingers == [1, 1, 1, 1, 1] and level == 2:
+        if fingers == [0, 0, 0, 0, 0] and level == 2:
             print(fingers)
             if not condition_met:  # Check if the condition has not been met previously
                 condition_met = True
@@ -256,7 +267,7 @@ while True:
                 
 
         # Reset the condition flag if fingers change from [1, 1, 1, 1, 1]
-        if fingers == [0, 0, 0, 0, 0]:
+        if fingers == [1, 1, 1, 1, 1]:
             condition_met = False
 
 
